@@ -1,0 +1,55 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - master  # Trigger on pushes to the master branch
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Check out the code
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # Step 2: Authenticate with Google Cloud
+    - name: Authenticate with Google Cloud
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+
+    # Step 3: Configure Docker for Artifact Registry
+    - name: Configure Docker for Artifact Registry
+      run: |
+        gcloud auth configure-docker asia-southeast1-docker.pkg.dev
+
+    # Step 4: Set up GCP
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v1
+      with:
+        project_id: qdex-401002
+        export_default_credentials: true
+
+    # Step 5: Build the Docker image
+    - name: Build Docker image
+      run: |
+        docker build -t asia-southeast1-docker.pkg.dev/qdex-401002/gcr/oneart-identity-service:$GITHUB_SHA .
+
+    # Step 6: Push the Docker image to Artifact Registry
+    - name: Push Docker image
+      run: |
+        docker push asia-southeast1-docker.pkg.dev/qdex-401002/gcr/oneart-identity-service:$GITHUB_SHA
+
+    # Step 7: Deploy to Cloud Run
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy oneart-identity-service \
+          --image asia-southeast1-docker.pkg.dev/qdex-401002/gcr/oneart-identity-service:$GITHUB_SHA \
+          --region asia-southeast1 \
+          --allow-unauthenticated \
+          --vpc-connector my-connector \
+          --add-cloudsql-instances=qdex-401002:asia-south1:oneart-postgres \
+          --timeout=300s \
+          --update-env-vars="DB_DSN=postgres://postgres:oneart-secret@/postgres?host=/cloudsql/qdex-401002:asia-south1:oneart-postgres,JWT_SECRET=supersecret"
