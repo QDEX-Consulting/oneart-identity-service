@@ -11,6 +11,7 @@ import (
 	service "github.com/QDEX-Core/oneart-identity-service/internal/services"
 
 	"github.com/gorilla/mux"
+	"github.com/rs/cors" // Importing CORS package
 )
 
 func main() {
@@ -36,10 +37,18 @@ func main() {
 	r.HandleFunc("/auth/register", userHandler.Register).Methods("POST")
 	r.HandleFunc("/auth/login", userHandler.Login).Methods("POST")
 
+	// Add CORS middleware to allow frontend connections
+	corsMiddleware := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:8081", "http://127.0.0.1:8081"}, // Add allowed frontend origins
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowCredentials: true,
+	}).Handler(r)
+
 	// Start the server
 	port := "8080"
 	log.Printf("Starting OneArt Identity Service on port %s...", port)
-	if err := http.ListenAndServe(":"+port, r); err != nil {
+	if err := http.ListenAndServe(":"+port, corsMiddleware); err != nil {
 		log.Fatal("Failed to start the server:", err)
 	}
 }
