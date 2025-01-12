@@ -42,7 +42,7 @@ jobs:
       run: |
         docker push asia-southeast1-docker.pkg.dev/qdex-401002/gcr/oneart-identity-service:$GITHUB_SHA
 
-    # Step 7: Deploy to Cloud Run
+    # Step 7: Deploy to Cloud Run For Identity Service
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy oneart-identity-service \
